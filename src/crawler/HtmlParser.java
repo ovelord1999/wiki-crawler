@@ -13,6 +13,7 @@ import org.jsoup.select.Elements;
 public class HtmlParser {
 	// if link contains any of these strings as substring, it's ignored
 	private static final String[] IGNORE = {"Category", "Cat%C3%A9gorie"};
+	public static int parsed = 0;
 	
 	/**
 	 * A url reference is <a href="url" ...>.
@@ -43,6 +44,7 @@ public class HtmlParser {
 					result.add(nextLink);
 				}
 			}
+			parsed++;
 			return result;
 		} catch (IOException e) {
 			return null;

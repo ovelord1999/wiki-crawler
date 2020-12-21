@@ -3,14 +3,16 @@ package main;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import crawler.HtmlParser;
 import crawler.WikiCrawler;
 
 public class Main {
 	public static void main(String[] args) {
 		ConcurrentHashMap<String, Integer> map = new ConcurrentHashMap<>();
-		String start = "https://en.wikipedia.org/wiki/Linux";
-		int maxCrawl = 1103;
-		WikiCrawler crawler = new WikiCrawler(map, start, maxCrawl);
+		String start = "https://onepiece.fandom.com/wiki/Pandaman";
+		int maxCrawl = 2;
+		WikiCrawler crawler = new WikiCrawler(map, start);
+		crawler.setMaxSearchDepth(maxCrawl);
 		crawler.start();
 		try {
 			crawler.join();
@@ -23,5 +25,6 @@ public class Main {
 				System.out.println(pair.getValue() + " \t " + pair.getKey());
 			});
 		System.out.println("Map has " + map.size() + " (url,refcount) pairs");
+		System.out.println(HtmlParser.parsed);
 	}
 }

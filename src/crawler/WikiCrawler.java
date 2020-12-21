@@ -1,5 +1,6 @@
 package crawler;
 
+import java.lang.annotation.Retention;
 import java.util.Collection; 
 import java.util.LinkedList;
 import java.util.List;
@@ -10,39 +11,77 @@ public class WikiCrawler extends Thread {
 	private String startUrl;
 	private List<String> toSearchQueue;
 	private int maxCrawl;
+	private int maxDepth;
 	private int alreadyCrawled;
+	private boolean running = false;
+	private int currentLevel = 0;
+	private int currentLevelUrlsCount = 1;
+	private int nextLevelUrlsCount = 0;
 	
 	/**
 	 * @param urlRefcountMap should be empty
 	 * @param startUrl the url, where to start the search
 	 * @param maxCrawl max number of wiki pages to crawl
 	 */
-	public WikiCrawler(ConcurrentHashMap<String, Integer> urlRefcountMap, String startUrl
-			, int maxCrawl) {
+	public WikiCrawler(ConcurrentHashMap<String, Integer> urlRefcountMap
+			, String startUrl) {
 		this.urlRefcountMap = urlRefcountMap;
 		this.startUrl = startUrl;
 		this.toSearchQueue = new LinkedList<>();
 		this.alreadyCrawled = 0;
-		this.maxCrawl = maxCrawl;
+		this.maxCrawl = this.maxDepth = -1;
+	}
+	
+	/**
+	 * set max number of wiki pages to crawl IF crawling didn't start yet
+	 * set to -1 for unbouned search
+	 */
+	public void setMaxCrawl(int maxCrawl) {
+		if (!this.running) {
+			this.maxCrawl = maxCrawl;
+		}
+	}
+	
+	/**
+	 * set max searchDepth (number of steps starting from startUrl)
+	 * IF crawling didn't start yet
+	 * set to -1 for unbouned search
+	 * set to 1 to only parse the startUrl
+	 */
+	public void setMaxSearchDepth(int maxDepth) {
+		if (!this.running) {
+			this.maxDepth = maxDepth;
+		}
 	}
 	
 	@Override
 	public void run() {
+		this.running = true;
 		toSearchQueue.add(startUrl);
 		alreadyCrawled++;
 		while (toSearchQueue.size() != 0) {
-			follow(toSearchQueue.get(0));
+			int refCount = follow(toSearchQueue.get(0));
 			toSearchQueue.remove(0);
+			nextLevelUrlsCount += refCount;
+			currentLevelUrlsCount--;
+			if (currentLevelUrlsCount == 0) {
+				currentLevel++;
+				currentLevelUrlsCount = nextLevelUrlsCount;
+				nextLevelUrlsCount = 0;
+			}
 		}
 		System.out.println("Done crawling");
 	}
 	
-	/* This function generates the references made by url
+	/** This function generates the references made by <code>url</code>
 	 * and adds them to urlRefcountMap.
 	 * 
 	 * References that were not visited before are added to toSearchQueue
+	 * 
+	 * @return number of references contained in <code>url</code>
 	 */
-	private void follow(String url) {
+	private int follow(String url) {
+		//TODO: how to deal with unsuccessfull parses (followers == null)
 		// mark url as already visited
 		Collection<String> followers = HtmlParser.parseRefs(url);
 		for (String follower : followers) {
@@ -51,11 +90,13 @@ public class WikiCrawler extends Thread {
 			Integer oldCount = urlRefcountMap.get(follower);
 			urlRefcountMap.put(follower, 1 + ((oldCount == null) ? 0 : oldCount));
 			
-			if (alreadyCrawled < maxCrawl 
+			if ((maxCrawl == -1 || alreadyCrawled < maxCrawl)
+					&& (maxDepth == -1 || currentLevel < maxDepth - 1)
 					&& !urlRefcountMap.contains(follower)) {
 				alreadyCrawled++;
 				toSearchQueue.add(follower);
 			}
 		}
+		return (followers != null) ? followers.size() : 0;
 	}
 }
