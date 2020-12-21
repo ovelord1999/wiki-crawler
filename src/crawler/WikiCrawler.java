@@ -1,9 +1,11 @@
 package crawler;
 
 import java.lang.annotation.Retention;
-import java.util.Collection; 
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class WikiCrawler extends Thread {
@@ -15,8 +17,8 @@ public class WikiCrawler extends Thread {
 	private int alreadyCrawled;
 	private boolean running = false;
 	private int currentLevel = 0;
-	private int currentLevelUrlsCount = 1;
-	private int nextLevelUrlsCount = 0;
+	public int currentLevelUrlsCount = 1;
+	public int nextLevelUrlsCount = 0;
 	
 	/**
 	 * @param urlRefcountMap should be empty
@@ -78,25 +80,29 @@ public class WikiCrawler extends Thread {
 	 * 
 	 * References that were not visited before are added to toSearchQueue
 	 * 
-	 * @return number of references contained in <code>url</code>
+	 * @return number of references to NEW urls contained in <code>url</code>
 	 */
 	private int follow(String url) {
 		//TODO: how to deal with unsuccessfull parses (followers == null)
 		// mark url as already visited
 		Collection<String> followers = HtmlParser.parseRefs(url);
+		int newCrawled = 0;
 		for (String follower : followers) {
+			// add follower to toSearchQueue if search limit not reached yet
+			// and follower not visited yet
+			if ((maxCrawl == -1 || alreadyCrawled < maxCrawl)
+					&& (maxDepth == -1 || currentLevel < maxDepth - 1)
+					&& !urlRefcountMap.containsKey(follower)) {
+				alreadyCrawled++;
+				toSearchQueue.add(follower);
+				newCrawled++;
+			}
+			
 			// TODO: the current implementation counts multiple references from a page
 			// to another page as a single reference. Allow to choose
 			Integer oldCount = urlRefcountMap.get(follower);
 			urlRefcountMap.put(follower, 1 + ((oldCount == null) ? 0 : oldCount));
-			
-			if ((maxCrawl == -1 || alreadyCrawled < maxCrawl)
-					&& (maxDepth == -1 || currentLevel < maxDepth - 1)
-					&& !urlRefcountMap.contains(follower)) {
-				alreadyCrawled++;
-				toSearchQueue.add(follower);
-			}
 		}
-		return (followers != null) ? followers.size() : 0;
+		return newCrawled;
 	}
 }
