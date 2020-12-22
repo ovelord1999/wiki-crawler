@@ -12,7 +12,8 @@ import org.jsoup.select.Elements;
 
 public class HtmlParser {
 	// if link contains any of these strings as substring, it's ignored
-	private static final String[] IGNORE = {"Category", "Cat%C3%A9gorie"};
+	private static final String[] IGNORE = {"Category", "Cat%C3%A9gorie", "action=edit"};
+	
 	public static int parsed = 0;
 	
 	/**
@@ -26,7 +27,7 @@ public class HtmlParser {
 		HashSet<String> result = new HashSet<>();
 		try {
 			Document doc = Jsoup.connect(urlString).get();
-			System.out.println("Now parsing " + doc.title());
+			System.out.println(parsed + ". Now parsing " + urlString + " ----------- " + doc.title());
 			// we only care about references in the body of a page
 			Element content = doc.getElementById("content");
 			
@@ -37,7 +38,6 @@ public class HtmlParser {
 				if (nextLink.length() != 0 
 						&& hostUrlString.compareTo (new URL(nextLink).getHost()) == 0
 						&& !result.contains(nextLink)
-						&& !nextLink.contains("action=edit")
 						&& !nextLink.startsWith(urlString)
 						// TODO: are streams a good idea ?
 						&& !Arrays.stream(IGNORE).anyMatch(nextLink::contains)) {
@@ -49,13 +49,5 @@ public class HtmlParser {
 		} catch (IOException e) {
 			return null;
 		}
-	}
-	
-	public static void main(String[] args) {
-		Collection<String> c = HtmlParser.parseRefs("https://fr.wikipedia.org/wiki/France");
-		for (String s : c) {
-			System.out.println(s);
-		}
-		System.out.println(c.size());
 	}
 }
